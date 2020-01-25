@@ -145,17 +145,17 @@ func registerPod(pod *corev1.Pod, p *Prometheus) {
 	}
 
 	log.Printf("D! [inputs.prometheus] will scrape metrics from %q", *targetURL)
+
 	// add annotation as metrics tags
-	tags := pod.GetMetadata().GetAnnotations()
-	if tags == nil {
-		tags = map[string]string{}
-	}
+	tags := map[string]string{}
+	copyKeyValues(tags, pod.GetMetadata().GetAnnotations(), p.ExcludeAnnotations)
+
 	tags["pod_name"] = pod.GetMetadata().GetName()
 	tags["namespace"] = pod.GetMetadata().GetNamespace()
+
 	// add labels as metrics tags
-	for k, v := range pod.GetMetadata().GetLabels() {
-		tags[k] = v
-	}
+	copyKeyValues(tags, pod.GetMetadata().GetLabels(), p.ExcludeLabels)
+
 	URL, err := url.Parse(*targetURL)
 	if err != nil {
 		log.Printf("E! [inputs.prometheus] could not parse URL %q: %s", *targetURL, err.Error())
@@ -220,4 +220,21 @@ func unregisterPod(pod *corev1.Pod, p *Prometheus) {
 		delete(p.kubernetesPods, *url)
 		log.Printf("D! [inputs.prometheus] will stop scraping for %q", *url)
 	}
+}
+
+func copyKeyValues(target map[string]string, source map[string]string, excluded []string) {
+	for k, v := range source {
+		if !contains(excluded, k) {
+			target[k] = v
+		}
+	}
+}
+
+func contains(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

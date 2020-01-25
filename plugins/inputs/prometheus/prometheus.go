@@ -50,12 +50,14 @@ type Prometheus struct {
 	client *http.Client
 
 	// Should we scrape Kubernetes services for prometheus annotations
-	MonitorPods    bool   `toml:"monitor_kubernetes_pods"`
-	PodNamespace   string `toml:"monitor_kubernetes_pods_namespace"`
-	lock           sync.Mutex
-	kubernetesPods map[string]URLAndAddress
-	cancel         context.CancelFunc
-	wg             sync.WaitGroup
+	MonitorPods        bool     `toml:"monitor_kubernetes_pods"`
+	PodNamespace       string   `toml:"monitor_kubernetes_pods_namespace"`
+	ExcludeAnnotations []string `toml:"monitor_kubernetes_pods_exclude_annotations"`
+	ExcludeLabels      []string `toml:"monitor_kubernetes_pods_exclude_labels"`
+	lock               sync.Mutex
+	kubernetesPods     map[string]URLAndAddress
+	cancel             context.CancelFunc
+	wg                 sync.WaitGroup
 }
 
 var sampleConfig = `
@@ -90,6 +92,10 @@ var sampleConfig = `
   ## Restricts Kubernetes monitoring to a single namespace
   ##   ex: monitor_kubernetes_pods_namespace = "default"
   # monitor_kubernetes_pods_namespace = ""
+  ## If given, excludes the following annotations being added to metric tags
+  # monitor_kubernetes_pods_exclude_annotations = ["some.namespace/annotation"]
+  ## If given, excludes the following labels being added to metric tags
+  # monitor_kubernetes_pods_exclude_labels = ["some-label-name"]
 
   ## Use bearer token for authorization. ('bearer_token' takes priority)
   # bearer_token = "/path/to/bearer/token"

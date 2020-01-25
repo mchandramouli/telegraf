@@ -95,6 +95,65 @@ func TestDeletePods(t *testing.T) {
 	assert.Equal(t, 0, len(prom.kubernetesPods))
 }
 
+func TestAddPodAddsAllAnnotationsToTags(t *testing.T) {
+	prom := &Prometheus{Log: testutil.Logger{}}
+
+	p := pod()
+	p.Metadata.Annotations = map[string]string{"prometheus.io/scrape": "true", "test.io/annotation": "yes"}
+	registerPod(p, prom)
+	assert.Equal(t, 1, len(prom.kubernetesPods))
+
+	_, ok := prom.kubernetesPods["http://127.0.0.1:9102/metrics"].Tags["test.io/annotation"]
+	assert.True(t, ok, "Annotation 'test.io/annotation' must be in the tags")
+}
+
+func TestAddPodAddsAllAnnotationsNotExcludedToTags(t *testing.T) {
+	prom := &Prometheus{Log: testutil.Logger{}, ExcludeAnnotations: []string{"test.io/annotation2"}}
+
+	p := pod()
+	p.Metadata.Annotations = map[string]string{"prometheus.io/scrape": "true",
+		"test.io/annotation":  "yes",
+		"test.io/annotation2": "no"}
+	registerPod(p, prom)
+
+	assert.Equal(t, 1, len(prom.kubernetesPods))
+
+	_, ok := prom.kubernetesPods["http://127.0.0.1:9102/metrics"].Tags["test.io/annotation"]
+	assert.True(t, ok, "Annotation 'test.io/annotation' must be in the tags")
+	_, ok = prom.kubernetesPods["http://127.0.0.1:9102/metrics"].Tags["test.io/annotation2"]
+	assert.False(t, ok, "Annotation 'test.io/annotation2' must NOT be in the tags")
+}
+
+func TestAddPodAddsAllLabelsToTags(t *testing.T) {
+	prom := &Prometheus{Log: testutil.Logger{}}
+
+	p := pod()
+	p.Metadata.Annotations = map[string]string{"prometheus.io/scrape": "true"}
+	p.Metadata.Labels = map[string]string{"some-label-1": "value1"}
+	registerPod(p, prom)
+
+	assert.Equal(t, 1, len(prom.kubernetesPods))
+
+	_, ok := prom.kubernetesPods["http://127.0.0.1:9102/metrics"].Tags["some-label-1"]
+	assert.True(t, ok, "Annotation 'some-label-1' must be in the tags")
+}
+
+func TestAddPodAddsAllLabelsNotExcludedToTags(t *testing.T) {
+	prom := &Prometheus{Log: testutil.Logger{}, ExcludeLabels: []string{"some-label-2"}}
+
+	p := pod()
+	p.Metadata.Annotations = map[string]string{"prometheus.io/scrape": "true"}
+	p.Metadata.Labels = map[string]string{"some-label-1": "value1"}
+	registerPod(p, prom)
+
+	assert.Equal(t, 1, len(prom.kubernetesPods))
+
+	_, ok := prom.kubernetesPods["http://127.0.0.1:9102/metrics"].Tags["some-label-1"]
+	assert.True(t, ok, "Annotation 'some-label-1' must be in the tags")
+	_, ok = prom.kubernetesPods["http://127.0.0.1:9102/metrics"].Tags["some-label-2"]
+	assert.False(t, ok, "Annotation 'some-label-2' must NOT be in the tags")
+}
+
 func pod() *v1.Pod {
 	p := &v1.Pod{Metadata: &metav1.ObjectMeta{}, Status: &v1.PodStatus{}}
 	p.Status.PodIP = str("127.0.0.1")
