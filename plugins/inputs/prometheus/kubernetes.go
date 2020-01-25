@@ -146,14 +146,16 @@ func registerPod(pod *corev1.Pod, p *Prometheus) {
 
 	log.Printf("D! [inputs.prometheus] will scrape metrics from %q", *targetURL)
 
-	// add annotation as metrics tags
 	tags := map[string]string{}
+
+	// add annotations that are not excluded as metrics tags
 	copyKeyValues(tags, pod.GetMetadata().GetAnnotations(), p.ExcludeAnnotations)
 
+	// add default annotations
 	tags["pod_name"] = pod.GetMetadata().GetName()
 	tags["namespace"] = pod.GetMetadata().GetNamespace()
 
-	// add labels as metrics tags
+	// add labels that are not excluded as metrics tags
 	copyKeyValues(tags, pod.GetMetadata().GetLabels(), p.ExcludeLabels)
 
 	URL, err := url.Parse(*targetURL)
